@@ -68,7 +68,11 @@ function preDo<T extends IRequestOption | IUploadFileOption>(obj: T, resolve: (v
 
     obj._resolve = resolve;
     obj._reject = reject;
-    obj.tag = generateTag();
+
+    // 如果tag不存在，则生成一个，重试保证tag唯一
+    if (!obj.tag) {
+        obj.tag = generateTag();
+    }
     if (typeof obj.notNeedSession === "undefined") {
       obj.notNeedSession = false;
     }
