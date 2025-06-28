@@ -28,7 +28,9 @@ const defaultConfig: IInitOption = {
     mockJson: false,
     globalData: false,
     // session在本地缓存的key
-    sessionExpireKey: "sessionExpireKey"
+    sessionExpireKey: "sessionExpireKey",
+    // 任务队列最大长度限制
+    maxQueueSize: 100,
 };
 
 export default defaultConfig;

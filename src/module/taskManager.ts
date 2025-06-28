@@ -4,11 +4,29 @@ import requestHandler from './requestHandler'
 
 const taskQueue : any = {}; // 请求任务队列
 let waitRedoTask : IRequestOption[] = []; // 准备重新请求的队列
+let maxQueueSize = 100; // 队列最大长度限制，可通过配置修改
+
+// 设置队列最大长度
+function setMaxQueueSize(size: number) {
+  if (size > 0) {
+    maxQueueSize = size;
+  }
+}
+
+// 获取当前队列最大长度
+function getMaxQueueSize(): number {
+  return maxQueueSize;
+}
 
 function addSessionTask(task : any, obj: IRequestOption) {
   if (!obj.notNeedSession) {
-    const index = obj.tag + '';
-    taskQueue[index] = {
+    // 检查队列长度，如果超过则直接返回，不添加，依赖登陆态失效自动重试
+    if (Object.keys(taskQueue).length >= maxQueueSize) {
+      console.log('Task queue is full, not add task:', obj.url);
+      return;
+    }
+    
+    taskQueue[obj.tag] = {
       task,
       obj
     };
@@ -16,20 +34,23 @@ function addSessionTask(task : any, obj: IRequestOption) {
 }
 
 function abortSessionTask() {
+  waitRedoTask = [];
+  
   for (const tag in taskQueue) {
     const data = taskQueue[tag];
     if (data.task && data.obj) {
-      data.task.abort();
-      data.obj.aborted = true;
-      delSessionTask(data.obj.tag);
+      if (!data.obj.aborted) {
+        data.task.abort();
+        data.obj.aborted = true;
+      }
       waitRedoTask.push(data.obj);
     }
   }
 }
 
 function redoSessionTask() {
-  if (!waitRedoTask) return;
-  if (waitRedoTask.length === 0) return;
+  if (!waitRedoTask || waitRedoTask.length === 0) return;
+  
   for (const taskObj of waitRedoTask) {
     taskObj.aborted = false;
     requestHandler.request(taskObj);
@@ -37,17 +58,20 @@ function redoSessionTask() {
   waitRedoTask = [];
 }
 
-function delSessionTask(tag: Number) {
-  const index = tag + '';
-  if (taskQueue[index]) {
-    taskQueue[index] = null;
-    delete taskQueue[index];
+function delSessionTask(tag: string) {
+  if (!taskQueue[tag]) {
+    return; // tag不存在则直接返回
   }
+  
+  delete taskQueue[tag];
 }
+
 
 export default {
   addSessionTask,
   delSessionTask,
   abortSessionTask,
   redoSessionTask,
+  setMaxQueueSize,
+  getMaxQueueSize,
 }

@@ -19,6 +19,7 @@ export interface IInitOption {
     errorContent?: string | ((res: string | IAnyObject | ArrayBuffer) => string);
     errorRetryBtn?: boolean;
     doNotUseQueryString?: boolean;
+    maxQueueSize?: number;
 }
 export interface ICodeToSessionOptions {
     url: string;
@@ -45,7 +46,7 @@ export interface IRequestOption extends IRequestObject {
     catchError?: boolean;
 }
 export interface IRequestObject extends wx.RequestOption {
-    tag: Number;
+    tag: string;
     notNeedSession: boolean;
     aborted: boolean;
     originUrl?: string;
@@ -66,7 +67,7 @@ export interface IUploadFileOption extends IUploadFileObject {
     catchError?: boolean;
 }
 export interface IUploadFileObject extends wx.UploadFileOption {
-    tag: Number;
+    tag: string;
     notNeedSession: boolean;
     aborted: boolean;
     originUrl?: string;
@@ -81,6 +82,7 @@ export interface IGetConfigResult {
     sessionExpireTime?: number;
     sessionExpireKey?: string;
     sessionExpire?: number;
+    maxQueueSize?: number;
 }
 export interface weRequest {
     init: (obj: IInitOption) => void;

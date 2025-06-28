@@ -12,7 +12,25 @@ import errorHandler from "./errorHandler";
 import { catchHandler } from './catchHandler';
 import taskManager from './taskManager'
 
+// 优化的tag生成器
 let requestTag = 0;
+const MAX_SAFE_TAG = 1000000; // 安全阈值
+
+function generateTag(): string {
+    // 使用时间戳 + 计数器的方式，确保唯一性
+    const timestamp = Date.now();
+    const counter = requestTag++;
+    
+    // 当计数器达到安全阈值时重置
+    if (requestTag >= MAX_SAFE_TAG) {
+        requestTag = 0;
+    }
+    
+    // 简单的字符串拼接，避免数值溢出
+    return `${timestamp}-${counter}`;
+}
+
+
 
 // 格式化url
 function format(originUrl: string) {
@@ -50,7 +68,7 @@ function preDo<T extends IRequestOption | IUploadFileOption>(obj: T, resolve: (v
 
     obj._resolve = resolve;
     obj._reject = reject;
-    obj.tag = requestTag++;
+    obj.tag = generateTag();
     if (typeof obj.notNeedSession === "undefined") {
       obj.notNeedSession = false;
     }

@@ -46,6 +46,8 @@ export interface IInitOption {
     errorRetryBtn?: boolean;
     /* 当请求为非GET时，不将登陆态等参数放在queryString上（默认都放queryString） */
     doNotUseQueryString?: boolean;
+    /* 任务队列最大长度限制，超过限制时会移除最旧的任务 */
+    maxQueueSize?: number;
 }
 
 export interface ICodeToSessionOptions{
@@ -103,7 +105,7 @@ export interface IRequestOption extends IRequestObject {
 
 export interface IRequestObject extends wx.RequestOption{
     /* 请求标记 */
-    tag: Number,
+    tag: string,
     /* 请求接口不依赖登录态 */
     notNeedSession: boolean;
     /* 请求接口是否被强制终止 */
@@ -143,7 +145,7 @@ export interface IUploadFileOption extends IUploadFileObject {
 
 export interface IUploadFileObject extends wx.UploadFileOption {
     /* 请求标记 */
-    tag: Number,
+    tag: string,
     /* 请求接口不依赖登录态 */
     notNeedSession: boolean;
     /* 请求接口是否被强制终止 */
@@ -171,6 +173,8 @@ export interface IGetConfigResult {
     sessionExpireKey?: string;
     /* 用户登陆态本地缓存过期的时间戳 */
     sessionExpire?: number;
+    /* 任务队列最大长度限制 */
+    maxQueueSize?: number;
 }
 
 export interface weRequest {

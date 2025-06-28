@@ -1,5 +1,6 @@
 import { IRequestOption, IUploadFileOption } from "../interface";
 import errorHandler from "./errorHandler";
+import taskManager from "./taskManager";
 
 type ThrowErrorType = 'upload-error' | 'logic-error' | 'http-error'
 interface ThrowError {
@@ -11,6 +12,12 @@ function catchHandler(e: ThrowError, obj: IRequestOption | IUploadFileOption, re
     if (obj.aborted) {
       return;
     }
+    
+    // 清理失败的任务，防止内存泄漏
+    if (obj.tag) {
+      taskManager.delSessionTask(obj.tag);
+    }
+    
     if (obj.catchError) {
         if (type === 'http-error') {
             return reject(new Error(res.statusCode.toString()));
