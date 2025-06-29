@@ -109,6 +109,13 @@ function delSessionTask(tag: string) {
   delete taskQueue[tag];
 }
 
+// 重置所有状态和队列
+function reset() {
+  Object.keys(taskQueue).forEach(key => delete taskQueue[key]);
+  waitRedoTask = [];
+  isRedoing = false;
+  isAborting = false;
+}
 
 export default {
   addSessionTask,
@@ -117,4 +124,5 @@ export default {
   redoSessionTask,
   setMaxQueueSize,
   getMaxQueueSize,
+  reset,
 }
