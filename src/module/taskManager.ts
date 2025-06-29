@@ -92,7 +92,6 @@ function redoSessionTask() {
       if (data && data.obj) {
         data.obj.aborted = false;
         requestHandler.request(data.obj);
-        delSessionTask(tag);
       }
     }
   } finally {
