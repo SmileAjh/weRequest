@@ -5,6 +5,7 @@ declare function addSessionTask(task: any, obj: IRequestOption): void;
 declare function abortSessionTask(): void;
 declare function redoSessionTask(): void;
 declare function delSessionTask(tag: string): void;
+declare function reset(): void;
 declare const _default: {
     addSessionTask: typeof addSessionTask;
     delSessionTask: typeof delSessionTask;
@@ -12,5 +13,6 @@ declare const _default: {
     redoSessionTask: typeof redoSessionTask;
     setMaxQueueSize: typeof setMaxQueueSize;
     getMaxQueueSize: typeof getMaxQueueSize;
+    reset: typeof reset;
 };
 export default _default;
