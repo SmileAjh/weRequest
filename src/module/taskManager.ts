@@ -4,7 +4,7 @@ import requestHandler from './requestHandler'
 
 const taskQueue : any = {}; // 请求任务队列
 let waitRedoTask : string[] = []; // 准备重新请求的队列，只存储 tag
-let maxQueueSize = 100; // 队列最大长度限制，可通过配置修改
+let maxQueueSize = 20; // 队列最大长度限制，可通过配置修改
 let isRedoing = false; // 标记是否正在执行重试任务
 let isAborting = false; // 标记是否正在执行中断任务
 
@@ -22,6 +22,15 @@ function getMaxQueueSize(): number {
 
 function addSessionTask(task : any, obj: IRequestOption) {
   if (!obj.notNeedSession) {
+    // 如果 tag 已存在，直接更新任务
+    if (taskQueue[obj.tag]) {
+      taskQueue[obj.tag] = {
+        task,
+        obj
+      };
+      return;
+    }
+    
     // 检查队列长度，如果超过则直接返回，不添加，依赖登陆态失效自动重试
     if (Object.keys(taskQueue).length >= maxQueueSize) {
       console.log('Task queue is full, not add task:', obj.url);

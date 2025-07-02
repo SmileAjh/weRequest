@@ -185,7 +185,7 @@ weRequest.request({
 |sessionExpireKey|String|否|sessionExpireKey|如果为用户登陆态设置了本地缓存时间，则过期时间将以此值为key存储在Storage中|
 |doNotUseQueryString|Boolean|否|false|默认情况下，POST请求，登陆态除了带在请求body中，也会带在queryString上，如果配置了这个为true，则登陆态不带在queryString中|
 |setHeader|Object/Function|否||所有请求的header都会带上此对象中的字段|
-|maxQueueSize|Int|否|100|请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态|
+|maxQueueSize|Int|否|20|请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态|
 
 ##### codeToSession参数说明
 
@@ -299,7 +299,7 @@ weRequest.init({
     sessionExpireTime: 24 * 60 * 60 * 1000,
     // [可选] session本地缓存时间存在Storage中的名字，可不配置，默认为 sessionExpireKey
     sessionExpireKey: "sessionExpireKey",
-    // [可选] 请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态，可不配置，默认为100
+    // [可选] 请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态，可不配置，默认为20
     maxQueueSize: 50
 })
 ```
@@ -489,7 +489,7 @@ weRequest.init({
 })
 ```
 
-当队列达到最大长度时，新的请求将降级为不使用队列管理，每个请求独立处理登录态。这样可以防止队列无限增长，同时确保请求仍能正常进行。默认值为100。
+当队列达到最大长度时，新的请求将降级为不使用队列管理，每个请求独立处理登录态。这样可以防止队列无限增长，同时确保请求仍能正常进行。默认值为20。
 
 ### 登录态失效时，正在进行的请求会被取消吗？
 

@@ -30,7 +30,7 @@ const defaultConfig: IInitOption = {
     // session在本地缓存的key
     sessionExpireKey: "sessionExpireKey",
     // 任务队列最大长度限制
-    maxQueueSize: 100,
+    maxQueueSize: 20,
 };
 
 export default defaultConfig;
