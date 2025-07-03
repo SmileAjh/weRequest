@@ -186,6 +186,9 @@ weRequest.request({
 |doNotUseQueryString|Boolean|否|false|默认情况下，POST请求，登陆态除了带在请求body中，也会带在queryString上，如果配置了这个为true，则登陆态不带在queryString中|
 |setHeader|Object/Function|否||所有请求的header都会带上此对象中的字段|
 |maxQueueSize|Int|否|20|请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态|
+|sessionPosition|String|否|'data'|登录态的默认位置，可选值：'data'(放在请求数据中)、'header'(放在请求头中)、'both'(同时放在请求数据和请求头中)|
+|headerPrefix|Object|否|{}|当session放在header中时，可为header中的字段配置前缀，如 {Authorization: 'Bearer '} 会为 Authorization 添加指定前缀|
+|sessionKeyPosition|Object|否|{}|可为每个session key单独配置位置，优先级高于sessionPosition。如：{token: 'header', userId: 'data'}|
 
 ##### codeToSession参数说明
 

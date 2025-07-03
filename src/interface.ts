@@ -48,6 +48,17 @@ export interface IInitOption {
     doNotUseQueryString?: boolean;
     /* 任务队列最大长度限制，超过限制时会移除最旧的任务 */
     maxQueueSize?: number;
+    /* 登录态的位置，可选值：'data'|'header'|'both'，默认为 'data' */
+    sessionPosition?: 'data' | 'header' | 'both';
+    /* header中字段的前缀配置 */
+    headerPrefix?: {
+        /* 字段的前缀配置 */
+        [key: string]: string;
+    };
+    /* session key 的位置配置 */
+    sessionKeyPosition?: {
+        [key: string]: 'data' | 'header' | 'both';
+    };
 }
 
 export interface ICodeToSessionOptions{

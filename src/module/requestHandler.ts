@@ -104,8 +104,47 @@ function initializeRequestObj(obj: IRequestOption) {
         obj.header = {...obj.header, ...config.setHeader};
     }
 
+    // 根据配置决定 session 放在哪里
     if (obj.originUrl !== config.codeToSession.url && status.session) {
-        obj.data = { ...obj.data as object, ...status.session };
+        const defaultPosition = config.sessionPosition;
+        const headerSession: any = {};
+        const dataSession: any = {};
+
+        // 根据每个 key 的配置决定放在哪里
+        Object.keys(status.session).forEach(key => {
+            const position = config.sessionKeyPosition?.[key] || defaultPosition;
+            
+            if (position === 'data' || position === 'both') {
+                dataSession[key] = status.session[key];
+            }
+            
+            if (position === 'header' || position === 'both') {
+                headerSession[key] = status.session[key];
+            }
+        });
+
+        // 处理 data 中的 session
+        if (Object.keys(dataSession).length > 0) {
+            obj.data = { ...obj.data as object, ...dataSession };
+            
+            // 如果请求不是GET，将 data 中的 session 也放入 URL
+            if (!config.doNotUseQueryString && obj.method !== "GET") {
+                obj.url = url.setParams(obj.url, dataSession);
+            }
+        }
+
+        // 处理 header 中的 session
+        if (Object.keys(headerSession).length > 0) {
+            // 添加配置的前缀
+            if (config.headerPrefix) {
+                Object.keys(headerSession).forEach(key => {
+                    if (config.headerPrefix![key]) {
+                        headerSession[key] = `${config.headerPrefix![key]}${headerSession[key]}`;
+                    }
+                });
+            }
+            obj.header = { ...obj.header, ...headerSession };
+        }
     }
 
     // 如果有全局参数，则添加
@@ -115,11 +154,8 @@ function initializeRequestObj(obj: IRequestOption) {
     obj.method = obj.method || 'GET';
     obj.dataType = obj.dataType || 'json';
 
-    // 如果请求不是GET，则在URL中自动加上登录态和全局参数
+    // 添加全局参数到 URL
     if (!config.doNotUseQueryString && obj.method !== "GET") {
-        if (status.session) {
-            obj.url = url.setParams(obj.url, { ...status.session });
-        }
         obj.url = url.setParams(obj.url, gd);
     }
 

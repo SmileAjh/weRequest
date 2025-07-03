@@ -31,6 +31,12 @@ const defaultConfig: IInitOption = {
     sessionExpireKey: "sessionExpireKey",
     // 任务队列最大长度限制
     maxQueueSize: 20,
+    // session 默认放在 data 中
+    sessionPosition: 'data',
+    // header 中字段的前缀配置
+    headerPrefix: {},
+    // session key 的位置配置，默认都放在 data 中
+    sessionKeyPosition: {},
 };
 
 export default defaultConfig;

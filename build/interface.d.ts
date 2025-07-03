@@ -20,6 +20,13 @@ export interface IInitOption {
     errorRetryBtn?: boolean;
     doNotUseQueryString?: boolean;
     maxQueueSize?: number;
+    sessionPosition?: 'data' | 'header' | 'both';
+    headerPrefix?: {
+        [key: string]: string;
+    };
+    sessionKeyPosition?: {
+        [key: string]: 'data' | 'header' | 'both';
+    };
 }
 export interface ICodeToSessionOptions {
     url: string;
