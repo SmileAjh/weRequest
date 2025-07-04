@@ -60,6 +60,9 @@ function responseForRequest(
                 }
             }
         } else {
+            if (config.loginTrigger!(res.data) && obj.reLoginCount !== undefined && obj.reLoginCount >= config.reLoginLimit!) {
+                taskManager.reset();
+            }
             // 接口返回失败码
             throw { type: 'logic-error', res }
         }
