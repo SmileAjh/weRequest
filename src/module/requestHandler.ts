@@ -106,7 +106,8 @@ function initializeRequestObj(obj: IRequestOption) {
 
     // 根据配置决定 session 放在哪里
     if (obj.originUrl !== config.codeToSession.url && status.session) {
-        const defaultPosition = config.sessionPosition;
+        // 默认位置
+        const defaultPosition = config.sessionDefaultPosition || 'data';
         const headerSession: any = {};
         const dataSession: any = {};
 
