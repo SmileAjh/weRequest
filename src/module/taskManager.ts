@@ -23,8 +23,8 @@ function getMaxQueueSize(): number {
 function addSessionTask(task : any, obj: IRequestOption) {
   if (!obj.notNeedSession) {
     // 如果 tag 已存在，直接更新任务
-    if (taskQueue[obj.tag]) {
-      taskQueue[obj.tag] = {
+    if (taskQueue[obj.tag!]) {
+      taskQueue[obj.tag!] = {
         task,
         obj
       };
@@ -37,7 +37,7 @@ function addSessionTask(task : any, obj: IRequestOption) {
       return;
     }
     
-    taskQueue[obj.tag] = {
+    taskQueue[obj.tag!] = {
       task,
       obj
     };
@@ -88,7 +88,9 @@ function redoSessionTask() {
     return;
   }
   
-  if (!waitRedoTask || waitRedoTask.length === 0) return;
+  if (!waitRedoTask || waitRedoTask.length === 0){
+    return;
+  }
   
   isRedoing = true;
   

@@ -1,4 +1,4 @@
-const weRequest = require('./request');
+import weRequest from './request';
 
 Page({
     data: {},
@@ -11,23 +11,12 @@ Page({
             data: {
                 id: id
             },
+            enableHttp2: true,
+            timeout: 1000,
             showLoading: true,
             success: function (data) {
                 console.log(data);
             },
-            codeToSessionFail: function() {
-
-            },
-            fail:function(obj, res) {
-                if(codeToSessionFail) {
-
-                } else {
-
-                }
-                // code to session
-
-                // ...
-            }
         })
     },
     upload: function() {
@@ -56,6 +45,11 @@ weRequest.init({
                 userId: res.userId
             };
         }
+    },
+    urlPerfix: 'https://xxx.test.com/',
+    // 备份域名配置
+    backupDomainList: {
+      "https://xxx.test.com/" : "https://https://yyy.test.com//",
     },
     
     // session配置
@@ -92,52 +86,5 @@ weRequest.init({
     // 需要重新登录的判断条件
     loginTrigger: function(res) {
         return res.code === 401;
-    }
-});
-
-// 不同场景的session位置配置示例：
-
-// 1. 最简单配置 - 只在data中传递session
-weRequest.init({
-    codeToSession: {
-        url: 'auth/login',
-        success: function(res) {
-            return {
-                session: res.sessionId
-            };
-        }
-    },
-    sessionName: {
-        session: 'userSession'
-    },
-    // session默认就放在data中，可以省略此配置
-    // sessionDefaultPosition: 'data',
-    successTrigger: function(res) {
-        return res.code === 0;
-    }
-});
-
-// 2. 全部放在data中（显式配置），可不配置
-weRequest.init({
-    sessionDefaultPosition: 'data'
-});
-
-// 2. 全部放在header中
-weRequest.init({
-    sessionDefaultPosition: 'header',
-    headerPrefix: {
-        'token': 'Bearer '
-    }
-});
-
-// 3. 混合配置 - 根据不同字段设置不同位置
-weRequest.init({
-    sessionDefaultPosition: 'data',      // 默认放data中
-    sessionKeyPosition: {
-        'token': 'header',               // token单独放header
-        'sessionId': 'both'              // sessionId同时放data和header
-    },
-    headerPrefix: {
-        'token': 'Bearer '
     }
 });

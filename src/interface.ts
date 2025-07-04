@@ -1,8 +1,12 @@
+export type Request = <TResp>(options: IRequestOption) => Promise<TResp>;
+
+export type IAnyObject = WechatMiniprogram.IAnyObject;
+
 export interface IInitOption {
     /* 用code换取session的CGI配置 */
     codeToSession: ICodeToSessionOptions;
     /* 储存在localStorage的session名称，key为CGI字段名，value为storage存储值 */
-    sessionName: any;
+    sessionName?: Record<string, string>;
     /* 设置请求头 */
     setHeader?: (()=> IAnyObject) | object;
     /* 请求URL的固定前缀，如果配置了，后续请求的URL都会自动加上这个前缀，如果是函数，则为函数的返回值 */
@@ -28,16 +32,16 @@ export interface IInitOption {
     mockJson?: any;
     /** 所有请求都会自动带上这里的参数 */
     globalData?: boolean | object | Function;
-    /** session在本地缓存的key */
+    /** 如果为用户登陆态设置了本地缓存时间，则过期时间将以此值为key存储在Storage中 */
     sessionExpireKey?: string;
-    /* session在本地缓存的有效时间（单位ms） */
+    /* 为用户登陆态设置本地缓存时间（单位为ms），一旦过期，直接废弃缓存中的登陆态 */
     sessionExpireTime?: number;
     /* 触发重新登录的条件；参数为CGI返回的数据，返回需要重新登录的条件 */
     loginTrigger?: (res: string | IAnyObject | ArrayBuffer) => boolean;
     /* 触发请求成功的条件；参数为CGI返回的数据，返回接口逻辑成功的条件 */
     successTrigger: (res: string | IAnyObject | ArrayBuffer) => boolean;
     /* 成功之后返回数据；参数为CGI返回的数据，返回逻辑需要使用的数据 */
-    successData?: (resData: string | IAnyObject | ArrayBuffer, res?: wx.RequestSuccessCallbackResult | wx.UploadFileSuccessCallbackResult) => string | IAnyObject | ArrayBuffer;
+    successData?: (resData: string | IAnyObject | ArrayBuffer, res?: WechatMiniprogram.RequestSuccessCallbackResult | WechatMiniprogram.UploadFileSuccessCallbackResult) => string | IAnyObject | ArrayBuffer;
     /* 	接口逻辑失败时，错误弹窗的标题 */
     errorTitle?: string | ((res: string | IAnyObject | ArrayBuffer) => string);
     /* 接口逻辑失败时，错误弹窗的内容 */
@@ -46,19 +50,31 @@ export interface IInitOption {
     errorRetryBtn?: boolean;
     /* 当请求为非GET时，不将登陆态等参数放在queryString上（默认都放queryString） */
     doNotUseQueryString?: boolean;
-    /* 任务队列最大长度限制，超过限制时会移除最旧的任务 */
-    maxQueueSize?: number;
-    /* 登录态的默认位置，可选值：'data'|'header'|'both'，默认为 'data' */
-    sessionDefaultPosition?: 'data' | 'header' | 'both';
-    /* header中字段的前缀配置 */
-    headerPrefix?: {
-        /* 字段的前缀配置 */
-        [key: string]: string;
-    };
-    /* session key 的位置配置 */
-    sessionKeyPosition?: {
-        [key: string]: 'data' | 'header' | 'both';
-    };
+    /* 自定义错误处理函数 */
+    errorHandler?: Function | null;
+    /* 请求发送前，提供hook给开发者自定义修改发送内容 */
+    beforeSend?: Function | null;
+    /* 自定义系统错误处理函数 */
+    systemErrorHandler?: Function | null;
+    /* 备用域名 */
+    backupDomainList?: IAnyObject;
+    /* 备用域名启用时回调函数 */
+    backupDomainEnableCallback?: Function;
+    /* 是否需要启用备用域名 */
+    domainChangeTrigger?: Function;
+     /* 任务队列最大长度限制，超过限制时会移除最旧的任务 */
+     maxQueueSize?: number;
+     /* 登录态的默认位置，可选值：'data'|'header'|'both'，默认为 'data' */
+     sessionDefaultPosition?: 'data' | 'header' | 'both';
+     /* header中字段的前缀配置 */
+     headerPrefix?: {
+         /* 字段的前缀配置 */
+         [key: string]: string;
+     };
+     /* session key 的位置配置 */
+     sessionKeyPosition?: {
+         [key: string]: 'data' | 'header' | 'both';
+     };
 }
 
 export interface ICodeToSessionOptions{
@@ -66,13 +82,13 @@ export interface ICodeToSessionOptions{
     url: string;
     /* 调用该CGI的方法 */
     method?: 'OPTIONS'
-        | 'GET'
-        | 'HEAD'
-        | 'POST'
-        | 'PUT'
-        | 'DELETE'
-        | 'TRACE'
-        | 'CONNECT' | 'string',
+    | 'GET'
+    | 'HEAD'
+    | 'POST'
+    | 'PUT'
+    | 'DELETE'
+    | 'TRACE'
+    | 'CONNECT',
     /* CGI中传参时，存放code的名称 */
     codeName?: string;
     /* 登录接口需要的其他参数 */
@@ -93,7 +109,7 @@ export interface ICodeToSessionOptions{
 
 export interface IRequestOption extends IRequestObject {
     /* data数据动态加载函数 */
-    dataLoad: Function;
+    dataLoad?: Function;
     /* 发起请求前执行的函数 */
     beforeSend?: Function;
     /* 请求过程页面是否展示全屏的loading */
@@ -114,13 +130,13 @@ export interface IRequestOption extends IRequestObject {
     catchError?: boolean;
 }
 
-export interface IRequestObject extends wx.RequestOption{
+export interface IRequestObject extends WechatMiniprogram.RequestOption{
     /* 请求标记 */
-    tag: string,
+    tag?: string;
     /* 请求接口不依赖登录态 */
-    notNeedSession: boolean;
+    notNeedSession?: boolean;
     /* 请求接口是否被强制终止 */
-    aborted: boolean;
+    aborted?: boolean;
     /* 业务请求的原始url */
     originUrl?: string;
     /* 重登陆次数 */
@@ -137,7 +153,7 @@ export interface IRequestObject extends wx.RequestOption{
 
 export interface IUploadFileOption extends IUploadFileObject {
     /* data数据动态加载函数 */
-    dataLoad: Function;
+    dataLoad?: Function;
     /* 发起请求前执行的函数 */
     beforeSend?: Function;
     /* 请求过程页面是否展示全屏的loading */
@@ -154,13 +170,13 @@ export interface IUploadFileOption extends IUploadFileObject {
     catchError?: boolean;
 }
 
-export interface IUploadFileObject extends wx.UploadFileOption {
+export interface IUploadFileObject extends WechatMiniprogram.UploadFileOption {
     /* 请求标记 */
-    tag: string,
+    tag?: string;
     /* 请求接口不依赖登录态 */
-    notNeedSession: boolean;
+    notNeedSession?: boolean;
     /* 请求接口是否被强制终止 */
-    aborted: boolean;
+    aborted?: boolean;
     /* 业务请求的原始url */
     originUrl?: string;
     /* 重登陆次数 */
@@ -184,8 +200,6 @@ export interface IGetConfigResult {
     sessionExpireKey?: string;
     /* 用户登陆态本地缓存过期的时间戳 */
     sessionExpire?: number;
-    /* 任务队列最大长度限制 */
-    maxQueueSize?: number;
 }
 
 export interface weRequest {
@@ -206,3 +220,22 @@ export interface weRequest {
     /* 获取weRequest版本 */
     version: string;
 }
+
+export interface IErrorObject {
+  type: 'logic-error' | 'http-error' | 'system-error'
+  res: WechatMiniprogram.RequestSuccessCallbackResult | WechatMiniprogram.GeneralCallbackResult,
+}
+
+export interface ILoginResult {
+    redoSessionTask: boolean;
+}
+
+export interface ITaskQueueItem {
+    task: WechatMiniprogram.RequestTask | WechatMiniprogram.UploadTask;
+    obj: IRequestOption;
+}
+
+export interface TaskQueueItem {
+    task: WechatMiniprogram.RequestTask;
+    obj: IRequestOption;
+  }

@@ -7,8 +7,7 @@ import sessionManager from './sessionManager'
 import responseHandler from './responseHandler'
 import durationReporter from "./durationReporter"
 import url from '../util/url'
-import { IRequestOption, IUploadFileOption } from "../interface"
-import errorHandler from "./errorHandler";
+import { IRequestOption, IUploadFileOption, IErrorObject, ILoginResult } from "../interface"
 import { catchHandler } from './catchHandler';
 import taskManager from './taskManager'
 
@@ -31,7 +30,6 @@ function generateTag(): string {
 }
 
 
-
 // 格式化url
 function format(originUrl: string) {
     if (originUrl.startsWith('http')) {
@@ -47,14 +45,15 @@ function format(originUrl: string) {
 
 // 所有请求发出前需要做的事情
 function preDo<T extends IRequestOption | IUploadFileOption>(obj: T, resolve: (value?: any) => void, reject?: (reason?: any) => void): T {
-    if (typeof obj.beforeSend === "function") {
-        obj.beforeSend();
-    }
     // 登录态失效，重复登录计数
     if (typeof obj.reLoginCount === "undefined") {
         obj.reLoginCount = 0;
     } else {
         obj.reLoginCount++;
+    }
+
+    if (obj.reLoginCount === 0 && typeof obj.beforeSend === "function") {
+        obj.beforeSend();
     }
 
     if (obj.showLoading) {
@@ -160,6 +159,9 @@ function initializeRequestObj(obj: IRequestOption) {
         obj.url = url.setParams(obj.url, gd);
     }
 
+    // 备用域名逻辑
+    obj.url = url.replaceDomain(obj.url);
+
     durationReporter.start(obj);
 
     return obj;
@@ -202,6 +204,9 @@ function initializeUploadFileObj(obj: IUploadFileOption) {
         obj.url = url.setParams(obj.url, gd);
     }
 
+    // 备用域名逻辑
+    obj.url = url.replaceDomain(obj.url);
+
     durationReporter.start(obj);
 
     return obj;
@@ -218,34 +223,43 @@ function getGlobalData() {
 }
 
 function doRequest(obj: IRequestOption) {
+    // 真正发请求时，再次判断一次是否有登陆态
+    if(!status.session) {
+        return request(obj) as Promise<WechatMiniprogram.RequestSuccessCallbackResult>;
+    }
     obj = initializeRequestObj(obj);
-    return new Promise((resolve, reject) => {
+    if (obj.reLoginCount === 0 && typeof config.beforeSend === "function") {
+        obj = config.beforeSend(obj, status.session);
+    }
+    return new Promise<WechatMiniprogram.RequestSuccessCallbackResult>((resolve, reject) => {
         const requestTask = wx.request({
-            url: obj.url,
-            data: obj.data,
-            method: obj.method,
-            header: obj.header || {},
-            dataType: obj.dataType || 'json',
-            enableHttp2: obj.enableHttp2 || false,
-            enableQuic: obj.enableQuic || false,
-            enableCache: obj.enableCache || false,
-            success(res: wx.RequestSuccessCallbackResult) {
+            ...obj,
+            success(res) {
                 return resolve(res);
             },
-            fail(res: wx.GeneralCallbackResult) {
+            fail(res) {
                 if (res && res.errMsg == 'request:fail abort') {
                   return;
                 }
-                errorHandler.systemError(obj, res);
-                return reject(res);
+                // 如果主域名不可用，且配置了备份域名，且本次请求未使用备份域名
+                if ((config.domainChangeTrigger && config.domainChangeTrigger(res)) && url.isInBackupDomainList(obj.url)) {
+                    // 开启备份域名
+                    enableBackupDomain(obj.url);
+                    // 重试一次
+                    return doRequest(obj).then((res)=> resolve(res));
+                }
+                return reject({ type: 'system-error', res });
             },
             complete() {
-                if (typeof obj.complete === "function") {
-                    obj.complete();
-                }
-                if (obj.showLoading) {
-                    loading.hide()
-                }
+                setTimeout(()=>{
+                    if (typeof obj.complete === "function") {
+                        obj.complete();
+                    }
+                    if (obj.showLoading) {
+                        loading.hide();
+                    }
+                }, 0)
+                
             }
         });
         taskManager.addSessionTask(requestTask, obj);
@@ -253,33 +267,45 @@ function doRequest(obj: IRequestOption) {
 }
 
 function doUploadFile(obj: IUploadFileOption) {
+    // 真正发请求时，再次判断一次是否有登陆态
+    if(!status.session) {
+        return uploadFile(obj) as Promise<WechatMiniprogram.UploadFileSuccessCallbackResult>;
+    }
     obj = initializeUploadFileObj(obj);
-    return new Promise((resolve, reject) => {
+    if (obj.reLoginCount === 0 && typeof config.beforeSend === "function") {
+        obj = config.beforeSend(obj, status.session);
+    }
+    return new Promise<WechatMiniprogram.UploadFileSuccessCallbackResult>((resolve, reject) => {
         wx.uploadFile({
-            url: obj.url,
-            filePath: obj.filePath || '',
-            name: obj.name || '',
-            formData: obj.formData,
-            success(res: wx.UploadFileSuccessCallbackResult) {
+            ...obj,
+            success(res) {
                 return resolve(res);
             },
-            fail(res: wx.GeneralCallbackResult) {
-                errorHandler.systemError(obj, res);
-                return reject(res);
+            fail(res) {
+                // 如果主域名不可用，且配置了备份域名，且本次请求未使用备份域名
+                if ((config.domainChangeTrigger && config.domainChangeTrigger(res)) && url.isInBackupDomainList(obj.url)) {
+                    // 开启备份域名
+                    enableBackupDomain(obj.url);
+                    // 重试一次
+                    return doUploadFile(obj).then((res)=> resolve(res));
+                }
+                return reject({ type: 'system-error', res });
             },
             complete() {
-                if (typeof obj.complete === "function") {
-                    obj.complete();
-                }
-                if (obj.showLoading) {
-                    loading.hide()
-                }
+                setTimeout(()=>{
+                    if (typeof obj.complete === "function") {
+                        obj.complete();
+                    }
+                    if (obj.showLoading) {
+                        loading.hide();
+                    }
+                }, 0)
             }
         })
     })
 }
 
-function request(obj: IRequestOption): any {
+function request<TResp>(obj: IRequestOption): Promise<TResp> {
     return new Promise((resolve, reject) => {
         obj = preDo(obj, resolve, reject);
 
@@ -295,19 +321,19 @@ function request(obj: IRequestOption): any {
             cacheManager.get(obj);
         }
 
-        sessionManager.main(obj).then((res: any) => {
+        sessionManager.main().then((res: ILoginResult|void) => {
           const promise = doRequest(obj);
           if (res && res.redoSessionTask) {
             // 登录成功后重试之前等待登录态的请求
             taskManager.redoSessionTask();
           }
           return promise;
-        }).then((res) => {
-            let response = responseHandler.responseForRequest(res as wx.RequestSuccessCallbackResult, obj);
+        }).then((res: WechatMiniprogram.RequestSuccessCallbackResult) => {
+            let response = responseHandler.responseForRequest(res, obj);
             if (response != null) {
                 return resolve(response);
             }
-        }).catch((e) => {
+        }).catch((e: IErrorObject) => {
             return catchHandler(e, obj, reject)
         })
     })
@@ -325,21 +351,31 @@ function uploadFile(obj: IUploadFileOption): any {
             }
         }
 
-        sessionManager.main(obj).then(() => {
+        sessionManager.main().then(() => {
             return doUploadFile(obj)
-        }).then((res) => {
-            let response = responseHandler.responseForUploadFile(res as wx.UploadFileSuccessCallbackResult, obj);
+        }).then((res: WechatMiniprogram.UploadFileSuccessCallbackResult) => {
+            let response = responseHandler.responseForUploadFile(res, obj);
             if (response != null) {
                 return resolve(response);
             }
-        }).catch((e) => {
+        }).catch((e: IErrorObject) => {
             catchHandler(e, obj, reject)
         })
     })
 }
 
+function enableBackupDomain(url: string = "") {
+    if (!status.isEnableBackupDomain) {
+        status.isEnableBackupDomain = true;
+        if (typeof config.backupDomainEnableCallback === 'function') {
+            config.backupDomainEnableCallback(url);
+        }
+    }
+}
+
 export default {
     format,
     request,
-    uploadFile
+    uploadFile,
+    enableBackupDomain
 }

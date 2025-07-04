@@ -1,3 +1,6 @@
+import config from '../store/config'
+import status from '../store/status'
+
 function setParams(url: string = "", params: object) {
     const queryStringIndex: number = url.indexOf("?");
     let kvp: any = {};
@@ -25,6 +28,33 @@ function setParams(url: string = "", params: object) {
     }
 }
 
+function replaceDomain(url: string = "") {
+    if (status.isEnableBackupDomain && config.backupDomainList && typeof config.backupDomainList === 'object') {
+        for(const origin in config.backupDomainList) {
+            if (url.indexOf(origin) >= 0) {
+                url = url.replace(origin, config.backupDomainList[origin]);
+                break;
+            }
+        }
+    }
+    return url;
+}
+
+function isInBackupDomainList(url: string = "") {
+    let res = false;
+    if (config.backupDomainList && typeof config.backupDomainList === 'object') {
+        for(const origin in config.backupDomainList) {
+            if (url.indexOf(origin) >= 0) {
+                res = true;
+                break;
+            }
+        }
+    }
+    return res;
+}
+
 export default {
-    setParams
+    setParams,
+    replaceDomain,
+    isInBackupDomainList
 };

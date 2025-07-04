@@ -1,15 +1,14 @@
 import config from '../store/config'
 import requestHandler from './requestHandler'
-import errorHandler from './errorHandler'
 import cacheManager from './cacheManager'
 import durationReporter from './durationReporter'
 import sessionManager from './sessionManager'
-import { IRequestOption, IUploadFileOption } from "../interface";
+import { IRequestOption, IUploadFileOption, IAnyObject } from "../interface";
 import jsonSuperset from '../util/jsonSuperset'
 import taskManager from './taskManager'
 
 function responseForRequest(
-    res: wx.RequestSuccessCallbackResult,
+    res: WechatMiniprogram.RequestSuccessCallbackResult,
     obj: IRequestOption
 ): any {
     if (res.statusCode === 200) {
@@ -27,16 +26,11 @@ function responseForRequest(
             try {
                 res.data = JSON.parse(res.data);
             } catch (e) {
-                if(obj.catchError) {
-                    throw new Error(e);
-                } else {
-                    errorHandler.logicError(obj, res);
-                    return;
-                }
+                throw { type: 'logic-error', res }
             }
         }
 
-        taskManager.delSessionTask(obj.tag);
+        taskManager.delSessionTask(obj.tag!);
 
         if (config.loginTrigger!(res.data) && obj.reLoginCount !== undefined && obj.reLoginCount < config.reLoginLimit!) {
             // 登录态失效，且重试次数不超过配置
@@ -54,9 +48,9 @@ function responseForRequest(
                 } else {
                     realData = res.data;
                 }
-            } catch (e) {
-                console.error("Function successData occur error: " + e);
-            }
+            } catch (e) {}
+            // 缓存存储
+            cacheManager.set(obj, realData);
             if (!obj.noCacheFlash) {
                 // 如果为了保证页面不闪烁，则不回调，只是缓存最新数据，待下次进入再用
                 if (typeof obj.success === "function") {
@@ -65,12 +59,7 @@ function responseForRequest(
                     return realData;
                 }
             }
-            // 缓存存储
-            cacheManager.set(obj, realData);
         } else {
-            if (config.loginTrigger!(res.data) && obj.reLoginCount !== undefined && obj.reLoginCount >= config.reLoginLimit!) {
-                taskManager.reset();
-            }
             // 接口返回失败码
             throw { type: 'logic-error', res }
         }
@@ -81,7 +70,7 @@ function responseForRequest(
 }
 
 function responseForUploadFile(
-    res: wx.UploadFileSuccessCallbackResult,
+    res: WechatMiniprogram.UploadFileSuccessCallbackResult,
     obj: IUploadFileOption
 ): any {
     if (res.statusCode === 200) {
@@ -94,12 +83,7 @@ function responseForUploadFile(
             try {
                 res.data = JSON.parse(res.data);
             } catch (e) {
-                if(obj.catchError) {
-                    throw new Error(e);
-                } else {
-                    errorHandler.logicError(obj, res);
-                    return;
-                }
+                throw { type: 'logic-error', res }
             }
         }
 
@@ -116,9 +100,7 @@ function responseForUploadFile(
                 } else {
                     realData = res.data;
                 }
-            } catch (e) {
-                console.error("Function successData occur error: " + e);
-            }
+            } catch (e) {}
 
             if (typeof obj.success === "function") {
                 obj.success(realData, {}, res);

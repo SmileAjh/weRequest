@@ -1,26 +1,9 @@
 <p align="center"><img src="./image/logo.png" alt="weRequest" height="160"/></p>
-<h2 align="center">v1.2.15</h2>
 <p align="center"><b>解决繁琐的小程序会话管理，一款自带登录态管理的网络请求组件。</b></p>
 
-> 🆕 **最新优化**：v1.2.15 版本对请求队列管理进行了重大优化，提供了更智能的登录态失效处理机制，支持队列长度控制，防止内存泄漏，提升系统稳定性。
 
 ## 目标
 让业务逻辑更专注，不用再关注底层登录态问题。小程序对比以往的H5，登录态管理逻辑要复杂很多。通过`weRequest`这个组件，希望能帮助开发者把更多精力放在业务逻辑上，而登录态管理问题只需通过一次简单配置，以后就不用再花精力管理了。
-
-## 核心特性
-
-### 🚀 智能登录态管理
-- **自动登录**：无登录态时自动执行登录流程
-- **自动重试**：登录态失效时自动重新登录并重试请求
-- **队列管理**：智能管理请求队列，防止内存泄漏
-- **降级机制**：队列满时自动降级为独立处理，确保请求正常进行
-
-### 🔄 优雅的登录态失效处理
-- **请求队列管理**：登录态失效时智能管理所有进行中的请求
-- **自动重试机制**：登录成功后自动重试之前等待的请求
-- **队列长度控制**：可配置的最大队列长度，满时降级为独立处理
-- **内存安全**：自动清理完成的请求，避免内存泄漏
-
 
 ## 如何安装
 
@@ -121,7 +104,7 @@ weRequest.request({
 
 具体到业务开发过程中的前端来说，我认为上图还不够完整，于是我画了下面这张以**前端逻辑**为出发点的、包含循环的**流程图**。
 我认为前端每一次**发起网络请求**，跟后台进行数据交互，都适用于下图的**流程**：
-![](https://raw.githubusercontent.com/IvinWu/weRequest/1.2.0/image/flow_login.png)
+![](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow_login.png)
 
 - **hasChecked：** 用一状态标识本生命周期内是否执行过`wx.checkSession`，判断该标识，若否，开始执行`wx.checkSession`，若是，进入下一步
 - **wx.checkSession()：** 调用接口判断登录态是否过期，若是，重新登录；若否，进入下一步
@@ -136,25 +119,30 @@ weRequest.request({
 
 只要遵循上图的流程，我们就无需在业务逻辑中关注登录态的问题了，相当于把登录态的管理问题**耦合**到了发起网络请求当中，本组件则完成了上述流程的封装，让开发者不用再关心以上逻辑，把精力放回在业务的开发上。
 
+## 2.0 版本与 1.0 版本的区别
+从上面介绍中可知，在本地无登录态的场景下，若要调用业务请求，首先需要执行一次登录流程，在拿到登录态后，才能真正地发起业务请求，整个过程涉及到多个网络来回。
+而2.0版本针对这里进行了一个优化，在后端接口满足的前提下，2.0的版本在发起业务请求时，根据当下情况可能会附带登录态，也可能会附带wx.login()返回的code，后端根据场景可能会先执行登录流程，然后完成业务逻辑后，将登录态和业务数据一同返回，以节省一次网络的来回。也就是说，对于2.0版本而已，不需要专门的登录接口了，所有的业务请求接口都需要兼容登录逻辑。
+如需使用2.0版本，请移步[这里](https://github.com/IvinWu/weRequest/tree/2.x.x)
+
 ## 演示DEMO
 
 ### 自动带上登录态参数
 
 通过`weRequest`发出的请求，将会自动带上登录态参数。
 对应的流程为下图中**红色**的指向：
-![自动带上登录态参数](https://raw.githubusercontent.com/IvinWu/weRequest/1.2.0/image/flow1.png)
+![自动带上登录态参数](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow1.png)
 
 ### 没有登录态时，自动登录
 
 当本地没有登录态时，按照流程图，`weRequest`将会自动执行`wx.login()`后的一系列流程，得到`code`并调用后台接口换取`session`，储存在localStorage之后，重新发起业务请求。
 对应的流程为下图中**红色**的指向：
-![没有登录态时，自动登录](https://raw.githubusercontent.com/IvinWu/weRequest/1.2.0/image/flow2.png)
+![没有登录态时，自动登录](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow2.png)
 
 ### 登录态过期时，自动重新登录
 
 对后台数据进行预解析之后，发现登录态过期，于是重新执行登录流程，获取新的`session`之后，重新发起请求。
 对应的流程为下图中**红色**的指向：
-![登录态过期时，自动重新登录](https://raw.githubusercontent.com/IvinWu/weRequest/1.2.0/image/flow3.png)
+![登录态过期时，自动重新登录](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow3.png)
 
 ## 文档
 
@@ -166,13 +154,14 @@ weRequest.request({
 
 |参数名|类型|必填|默认值|说明|
 | :-------- | :-------| :------ | :------ |:------ |
-|sessionName|Object|否|{session: 'session'}|value储存在localStorage的session名称，key为CGI请求的data中会自动带上的值.|
-|urlPerfix|String or Function|否||请求URL的固定前缀，如果配置了，后续请求的URL都会自动加上这个前缀，如果是函数，则为函数的返回值|
+|sessionName|Object|否|{session: 'session'}|所有请求会带上以此为key的票据；|
+|urlPerfix|String/Function|否||请求URL的固定前缀，如果配置了，后续请求的URL都会自动加上这个前缀，如果是函数，则为函数的返回值|
 |loginTrigger|Function|是||触发重新登录的条件；参数为CGI返回的数据，返回需要重新登录的条件|
 |codeToSession|Object|是||用code换取session的CGI配置|
 |reLoginLimit|Int|否|3|登录重试次数，当连续请求登录接口返回失败次数超过这个次数，将不再重试登录|
 |successTrigger|Function|是||触发请求成功的条件；参数为CGI返回的数据，返回接口逻辑成功的条件|
 |successData|Function|否||成功之后返回数据；参数为CGI返回的数据，返回逻辑需要使用的数据|
+|errorHandler|Function|否||自定义错误处理函数，若被定义，则默认的报错弹窗将不再自动发生，下方的errorTitle和errorContent将被忽略|
 |errorTitle|String/Function|否|操作失败|接口逻辑失败时，错误弹窗的标题|
 |errorContent|String/Function|否||接口逻辑失败时，错误弹窗的内容|
 |errorCallback|Function|否||当出现接口逻辑错误时，会执行统一的回调函数，这里可以做统一的错误上报等处理|
@@ -185,28 +174,37 @@ weRequest.request({
 |sessionExpireKey|String|否|sessionExpireKey|如果为用户登陆态设置了本地缓存时间，则过期时间将以此值为key存储在Storage中|
 |doNotUseQueryString|Boolean|否|false|默认情况下，POST请求，登陆态除了带在请求body中，也会带在queryString上，如果配置了这个为true，则登陆态不带在queryString中|
 |setHeader|Object/Function|否||所有请求的header都会带上此对象中的字段|
-|maxQueueSize|Int|否|20|请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态|
-|sessionPosition|String|否|'data'|登录态的默认位置，可选值：'data'(放在请求数据中)、'header'(放在请求头中)、'both'(同时放在请求数据和请求头中)|
-|headerPrefix|Object|否|{}|当session放在header中时，可为header中的字段配置前缀，如 {Authorization: 'Bearer '} 会为 Authorization 添加指定前缀|
-|sessionKeyPosition|Object|否|{}|可为每个session key单独配置位置，优先级高于sessionPosition。如：{token: 'header', userId: 'data'}|
+|beforeSend|Function|否||请求发送前的hook，开发者可在发送前自行处理数据|
 
-##### codeToSession参数说明
+##### codeToSession对象参数说明
 
 |参数名|类型|必填|默认值|说明|
 | :-------- | :-------| :------ | :------ |:------ |
 |url|String|是||CGI的url|
-|method|String|否|GET|调用改CGI的方法|
+|method|String|否|GET|调用CGI的方法|
 |codeName|String|否|code|CGI中传参时，存放code的名称|
-|data|Object|否||登录接口需要的其他参数|
-|success|Function|是||接口返回成功的函数；需要返回session的值|
+|data|Object/Function|否||登录接口需要的其他参数，当类型是Function时，第一个参数是code|
+|success|Function|是||接口返回成功的函数（回调参数有两个，分别为接口返回的数据，以及接口回包对象本身）；需要返回session的值|
 
-##### reportCGI返回参数说明
+##### reportCGI函数参数说明
 |参数名|类型|说明|
 | :-------- | :-------| :------ |
 |name|String|调用的接口名字，可在request接口的report字段配置|
 |startTime|Int|发起请求时的时间戳|
 |endTime|Int|请求返回时的时间戳|
 |request|Function|请求方法，可用于上报|
+
+##### beforeSend函数参数说明
+|参数名|类型|说明|
+| :-------- | :-------| :------ |
+|obj|Object|请求对象，包含url,data,header，开发者可自行修改，并最后将obj对象返回|
+|session|String|登录态票据，开发者可按需将票据放入obj中|
+
+##### errorCallback函数参数说明
+|参数名|类型|说明|
+| :-------- | :-------| :------ |
+|obj|Object|请求对象，包含url,data,header等内容|
+|res|Object|请求返回的错误信息，包含errMsg等信息|
 
 #### 示例代码
 
@@ -253,7 +251,7 @@ weRequest.init({
     },
     // [可选] 当CGI返回错误时，弹框提示的标题文字
     errorTitle: function(res) {
-        // 此处例子：当返回数据中的字段errcode等于0x10040730时，错误弹框的标题是"温馨提示"，其他情况下则是"操作失败"
+        // 此处例子：当返回数据中的字段errcode等于0x10040730时，错误弹框的标题是“温馨提示”，其他情况下则是“操作失败”
         return res.errcode == 0x10040730 ? '温馨提示' : '操作失败'
     },
     // [可选] 当CGI返回错误时，弹框提示的内容文字
@@ -301,9 +299,7 @@ weRequest.init({
     // [可选] session本地缓存时间(单位为ms)，可不配置，默认不设置本地缓存时间
     sessionExpireTime: 24 * 60 * 60 * 1000,
     // [可选] session本地缓存时间存在Storage中的名字，可不配置，默认为 sessionExpireKey
-    sessionExpireKey: "sessionExpireKey",
-    // [可选] 请求队列的最大长度限制，超过此限制时将降级为不使用队列，每个请求独立处理登录态，可不配置，默认为20
-    maxQueueSize: 50
+    sessionExpireKey: "sessionExpireKey"
 })
 ```
 
@@ -329,7 +325,7 @@ weRequest.init({
 |report|String|否||接口请求成功后将自动执行init()中配置的reportCGI函数，其中的name字段值为这里配置的值|是|
 |cache|Boolean|否||接口是否启用缓存机制，若为true，将以url为key将结果存储在storage中，下次带cache的请求优先返回缓存内容，success回调中第二个参数对象的isCache值将标识内容是否为缓存|是|
 |noCacheFlash|Boolean|否||当启用缓存时，决定除了返回缓存内容外，是否还返回接口实时内容，以防止页面多次渲染的抖动|是|
-|catchError|Boolean|否|false|当使用Promise模式时，开发者是否需要捕获错误（默认不捕获，统一自动处理错误）|否|
+|catchError|Boolean|否|false|当使用Promise模式时，开发者是否需要捕获错误（默认不捕获，统一自动处理错误）|是|
 
 #### 示例代码
 
@@ -369,7 +365,7 @@ weRequest.request({
 |complete|Function|否||接口调用结束的回调函数（调用成功、失败都会执行）||
 |showLoading|Boolean/String|否|false|请求过程页面是否展示全屏的loading，当值为字符串时，将展示相关文案的loading|是|
 |report|String|否||接口请求成功后将自动执行init()中配置的reportCGI函数，其中的name字段值为这里配置的值|是|
-|catchError|Boolean|否|false|当使用Promise模式时，开发者是否需要捕获错误（默认不捕获，统一自动处理错误）|否|
+|catchError|Boolean|否|false|当使用Promise模式时，开发者是否需要捕获错误（默认不捕获，统一自动处理错误）|是|
 
 #### 示例代码
 
@@ -406,7 +402,6 @@ wx.chooseImage({
 |sessionExpireTime|Int|在组件初始化时传入的用户登陆态设置本地缓存时间|
 |sessionExpireKey|String|在组件初始化时传入的用户登陆态本地缓存时间Storage的key|
 |sessionExpire|Int|用户登陆态本地缓存过期的时间戳|
-|maxQueueSize|Int|在组件初始化时传入的请求队列最大长度限制|
 
 ### .login()
 
@@ -459,61 +454,34 @@ weRequest.request({
 ```
 此时，如果接口返回错误码，将触发这里定义的fail函数，且默认错误弹框将不会出现。
 
-### 如何处理登录态失效时的并发请求？
+### 当配置 `catchError: true` 并触发请求失败时，我能捕获到哪些信息？
 
-weRequest 提供了智能的请求队列管理机制：
+当使用 Proimse 模式，并且开发者希望手动捕获错误时，就可以配置 `catchError: true`。此时触发请求失败时，就会抛出一个对象，里面包含了错误信息 `msg`（已通过配置的 `errorContent` 处理）和该请求最原始的返回包体 `data`。你可以通过 `msg` 直接用于上报或提示，也可以通过 `data` 来进行特殊的判断处理。
 
 ```javascript
-// 当检测到登录态失效时，weRequest 会自动：
-// 1. 中止所有进行中的请求
-// 2. 将这些请求保存到重试队列
-// 3. 自动重新登录
-// 4. 登录成功后自动重试所有等待的请求
-
-// 用户无需手动处理，所有操作都是自动的
 weRequest.request({
     url: 'order/detail',
-    data: { id: '123' },
-    success: function (data) {
-        // 即使登录态失效，这个请求也会在重新登录后自动重试
-        console.log(data);
-    }
+    showLoading: true,
+    data: { id: '123' }
+}).then(res => {
+    // 请求成功返回的数据 res
+}).catch(e => {
+    console.log(e.message); // 错误信息，已通过 `errorContent` 处理
+    console.log(e.data); // 错误请求返回包体
 })
 ```
 
-### 如何控制请求队列的长度？
+### 业务登录态票据希望放在header里，需要怎么办？
 
-可以通过 `maxQueueSize` 配置来控制请求队列的最大长度：
-
+可在调用`init`方法时，在钩子`beforeSend`中实现，举例如下：
 ```javascript
 weRequest.init({
-    // 其他配置...
-    maxQueueSize: 50, // 设置队列最大长度为50
+    // ...
+    beforeSend(obj, session) {
+        obj.header.session = session;
+        // 切记修改完后，需要将obj返回
+        return obj;
+    },
+    // ...
 })
 ```
-
-当队列达到最大长度时，新的请求将降级为不使用队列管理，每个请求独立处理登录态。这样可以防止队列无限增长，同时确保请求仍能正常进行。默认值为20。
-
-### 登录态失效时，正在进行的请求会被取消吗？
-
-是的，当检测到登录态失效时，weRequest 会：
-
-1. **中止所有进行中的请求**：调用 `abort()` 方法
-2. **保存请求信息**：将这些请求保存到重试队列
-3. **重新登录**：自动执行登录流程
-4. **自动重试**：登录成功后重新发起所有等待的请求
-
-这样可以确保：
-- 避免无效的网络请求
-- 保护用户数据的一致性
-- 提供更好的用户体验
-
-### 如何监控请求队列的状态？
-
-可以通过 `getConfig()` 方法获取队列配置信息：
-
-```javascript
-const config = weRequest.getConfig();
-console.log('队列最大长度:', config.maxQueueSize);
-```
-

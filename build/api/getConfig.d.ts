@@ -3,6 +3,5 @@ declare const _default: () => {
     sessionExpireTime: number | undefined;
     sessionExpireKey: string | undefined;
     sessionExpire: any;
-    maxQueueSize: number;
 };
 export default _default;

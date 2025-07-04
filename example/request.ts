@@ -92,7 +92,79 @@ weRequest.init({
     // [可选] session本地缓存时间(单位为ms)，可不配置，默认不设置本地缓存时间
     sessionExpireTime: 24 * 60 * 60 * 1000,
     // [可选] session本地缓存时间存在Storage中的名字，可不配置，默认为 sessionExpireKey
-    sessionExpireKey: "sessionExpireKey"
+    sessionExpireKey: "sessionExpireKey",
+    
+    // ============= 新增：session位置配置 =============
+    // [可选] session的默认位置，可选值：'data'|'header'|'both'，默认为 'data'
+    sessionDefaultPosition: 'data',
+    
+    // [可选] 针对特定key的位置配置，优先级高于sessionDefaultPosition
+    sessionKeyPosition: {
+        // 'token': 'header',    // token放在header中
+        // 'userId': 'both'      // userId同时放在data和header中
+    },
+    
+    // [可选] header中字段的前缀配置
+    headerPrefix: {
+        // 'token': 'Bearer ',   // token字段会添加 'Bearer ' 前缀
+        // 'userId': 'X-User-'   // userId字段会添加 'X-User-' 前缀
+    }
 })
+
+// ============= 不同场景的session位置配置示例 =============
+
+/*
+// 1. 最简单配置 - 只在data中传递session
+weRequest.init({
+    codeToSession: {
+        url: 'user/login',
+        success: function(res) {
+            return {
+                session: res.session
+            };
+        }
+    },
+    sessionName: {
+        session: 'userSession'
+    },
+    // session默认就放在data中，可以省略此配置
+    // sessionDefaultPosition: 'data',
+    successTrigger: function(res) {
+        return res.errcode == 0;
+    }
+});
+
+// 2. 全部放在data中（显式配置）
+weRequest.init({
+    sessionDefaultPosition: 'data',
+    // ... 其他配置
+});
+
+// 3. 全部放在header中
+weRequest.init({
+    sessionDefaultPosition: 'header',
+    headerPrefix: {
+        'session': 'Bearer '
+    },
+    // ... 其他配置
+});
+
+// 4. 混合配置 - 根据不同字段设置不同位置
+weRequest.init({
+    sessionName: {
+        token: 'userToken',
+        userId: 'uid'
+    },
+    sessionDefaultPosition: 'data',      // 默认放data中
+    sessionKeyPosition: {
+        'token': 'header',               // token单独放header
+        'userId': 'both'                 // userId同时放data和header
+    },
+    headerPrefix: {
+        'token': 'Bearer '
+    },
+    // ... 其他配置
+});
+*/
 
 export default weRequest;

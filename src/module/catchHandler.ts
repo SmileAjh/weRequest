@@ -1,43 +1,54 @@
-import { IRequestOption, IUploadFileOption } from "../interface";
+import { IRequestOption, IUploadFileOption, IErrorObject } from "../interface";
 import errorHandler from "./errorHandler";
-import taskManager from "./taskManager";
+import config from '../store/config'
+import taskManager from './taskManager'
 
-type ThrowErrorType = 'upload-error' | 'logic-error' | 'http-error'
-interface ThrowError {
-    type: ThrowErrorType
-    res: any
+class ErrorWithData extends Error {
+    data: any;
+
+    constructor(msg: string, data: any = {}) {
+        super(msg);
+        this.data = data;
+    }
 }
-function catchHandler(e: ThrowError, obj: IRequestOption | IUploadFileOption, reject: (reason?: any) => void) {
+function catchHandler(e: IErrorObject, obj: IRequestOption | IUploadFileOption, reject: (reason?: any) => void) {
     const { type, res } = e
     if (obj.aborted) {
-      return;
+        return;
     }
     
     // 清理失败的任务，防止内存泄漏
     if (obj.tag) {
-      taskManager.delSessionTask(obj.tag);
+        taskManager.delSessionTask(obj.tag);
     }
-    
+
+    // 如果有配置统一错误回调函数，则执行它
+    if (typeof config.errorCallback === "function") {
+        config.errorCallback(obj, res);
+    }
+
     if (obj.catchError) {
         if (type === 'http-error') {
-            return reject(new Error(res.statusCode.toString()));
-        } else if (type === 'upload-error') {
-            return reject(new Error(res));
+            return reject(new Error((res as WechatMiniprogram.RequestSuccessCallbackResult).statusCode.toString()));
         } else if (type === 'logic-error') {
-            let msg = errorHandler.getErrorMsg(res);
-            return reject(new Error(msg.content));
+            let msg = errorHandler.getErrorMsg(res as WechatMiniprogram.RequestSuccessCallbackResult);
+            return reject(new ErrorWithData(msg.content, (res as WechatMiniprogram.RequestSuccessCallbackResult).data));
+        } else if (type === 'system-error') {
+            return reject(new Error(res.errMsg));
         } else {
             // 其他js错误
             return reject(e);
         }
     } else {
-        if (e.type) {
-            return errorHandler.logicError(obj, e.res);
+        if (type === 'http-error' || type === 'logic-error') {
+            return errorHandler.logicError(obj, res as WechatMiniprogram.RequestSuccessCallbackResult);
+        } else if(type === 'system-error') {
+            return errorHandler.systemError(obj, res as WechatMiniprogram.GeneralCallbackResult);
         } else {
             // 其他js错误
             return reject(e);
         }
     }
-
 }
+
 export { catchHandler }

@@ -1,19 +1,17 @@
 import status from '../store/status'
 import config from '../store/config'
-import errorHandler from './errorHandler'
 import durationReporter from './durationReporter'
 import requestHandler from './requestHandler'
 import loading from '../util/loading'
-import request from '../api/request'
-import { IRequestOption, IUploadFileOption } from "../interface";
+import url from '../util/url'
+import { IErrorObject, ILoginResult } from "../interface"
 
 /* 生命周期内只做一次的checkSession */
 let checkSessionPromise: any = null;
 
 function checkSession() {
     if (!checkSessionPromise) {
-        checkSessionPromise = new Promise((resolve, reject) => {
-            console.log("wx.checkSession()");
+        checkSessionPromise = new Promise<ILoginResult|void>((resolve, reject) => {
             const start = new Date().getTime();
             wx.checkSession({
                 success() {
@@ -23,7 +21,7 @@ function checkSession() {
                 fail() {
                     // 登录态过期
                     delSession();
-                    return doLogin().then((res: any) => {
+                    return doLogin().then((res: ILoginResult) => {
                         return resolve(res);
                     }, (res: any)=>{
                         return reject(res);
@@ -75,18 +73,18 @@ function isSessionExpireOrEmpty() {
 }
 
 function checkLogin() {
-    return new Promise((resolve, reject) => {
+    return new Promise<ILoginResult>((resolve, reject) => {
         if (isSessionExpireOrEmpty()) {
             // 没有登陆态，不需要再checkSession
             config.doNotCheckSession = true;
-            return doLogin().then((res: any) => {
+            return doLogin().then((res: ILoginResult) => {
                 return resolve(res);
             }, (res: any)=>{
                 return reject(res);
             })
         } else {
             // 缓存中有session且未过期
-            return resolve();
+            return resolve({redoSessionTask: false});
         }
     })
 }
@@ -96,7 +94,7 @@ let loginPromise: any = null;
 
 function doLogin() {
     if (!loginPromise) {
-        loginPromise = new Promise((resolve, reject) => {
+        loginPromise = new Promise<ILoginResult>((resolve, reject) => {
             login().then(() => {
                 loginPromise = null;
                 return resolve({
@@ -113,8 +111,7 @@ function doLogin() {
 }
 
 function login() {
-    return new Promise((resolve, reject) => {
-        console.log('wx.login');
+    return new Promise<void>((resolve, reject) => {
         const start = new Date().getTime();
         wx.login({
             success(res) {
@@ -125,7 +122,7 @@ function login() {
                         return reject(res);
                     })
                 } else {
-                    return reject({title: "登录失败", "content": "请稍后重试[code 获取失败]"});
+                    return reject({type: "system-error", res});
                 }
             },
             complete() {
@@ -133,13 +130,13 @@ function login() {
                 durationReporter.report('wx_login', start, end);
             },
             fail(res) {
-                return reject({title: "登录失败", "content": res.errMsg});
+                return reject({type: "system-error", res});
             }
         })
     })
 }
 
-function setSession(session: any) {
+function setSession(session: Record<string, any>) {
     // 换回来的session，不需要再checkSession
     config.doNotCheckSession = true;
     // 如果有设置本地session过期时间
@@ -152,20 +149,22 @@ function setSession(session: any) {
     }
     let data : any = {};
     for (const key in session) {
-      wx.setStorage({
-        key: config.sessionName[key],
-        data: session[key],
-      });
+      if (config.sessionName && config.sessionName[key]) {
+        wx.setStorage({
+          key: config.sessionName[key],
+          data: session[key],
+        });
+      }
       data[key] = session[key];
     }
     status.session = Object.assign(status.session || {}, data);
 }
 
-function code2Session(code: string) {
+async function code2Session(code: string) {
     let data: any;
     // codeToSession.data支持函数
     if (typeof config.codeToSession.data === "function") {
-        data = config.codeToSession.data();
+        data = await config.codeToSession.data(code);
     } else {
         data = config.codeToSession.data || {};
     }
@@ -175,17 +174,24 @@ function code2Session(code: string) {
         data.code = code;
     }
 
+    let obj = {
+        url: requestHandler.format(config.codeToSession.url),
+        data,
+        method: config.codeToSession.method || 'GET',
+        header: typeof config.setHeader === 'function' ? config.setHeader(): config.setHeader,
+    }
+    if (typeof config.beforeSend === "function") {
+        obj = config.beforeSend(obj);
+    }
+
+    // 备用域名逻辑
+    obj.url = url.replaceDomain(obj.url);
+
     return new Promise((resolve, reject) => {
         let start = new Date().getTime();
         wx.request({
-            url: requestHandler.format(config.codeToSession.url),
-            data,
-            method: config.codeToSession.method || 'GET',
-            header: typeof config.setHeader === 'function' ? config.setHeader(): config.setHeader,
-            enableHttp2: config.codeToSession.enableHttp2 || false,
-            enableQuic: config.codeToSession.enableQuic || false,
-            enableCache: config.codeToSession.enableCache || false,
-            success(res: wx.RequestSuccessCallbackResult) {
+            ...obj,
+            success(res: WechatMiniprogram.RequestSuccessCallbackResult) {
                 if (res.statusCode === 200) {
                     // 耗时上报
                     if (config.codeToSession.report) {
@@ -195,24 +201,29 @@ function code2Session(code: string) {
 
                     let s = [];
                     try {
-                        s = config.codeToSession.success(res.data);
+                        s = config.codeToSession.success(res.data, res);
                     } catch (e) {
                     }
 
                     if (s) {
                         setSession(s);
-                        return resolve();
+                        return resolve(s);
                     } else {
-                        return reject(errorHandler.getErrorMsg(res));
+                        return reject({type: "logic-error", res});
                     }
                 } else {
-                    return reject({title: "登录失败", "content": "请稍后重试"});
+                    return reject({type: "http-error", res});
                 }
             },
-            complete() {
-            },
-            fail: () => {
-                return reject({title: "登录失败", "content": "请稍后重试"});
+            fail: (res) => {
+                // 如果主域名不可用，且配置了备份域名，且本次请求未使用备份域名
+                if ((config.domainChangeTrigger && config.domainChangeTrigger(res)) && url.isInBackupDomainList(obj.url)) {
+                    // 开启备份域名
+                    requestHandler.enableBackupDomain(obj.url);
+                    // 重试一次
+                    return code2Session(code).then((res)=> resolve(res));
+                }
+                return reject({type: "system-error", res});
             }
         })
     })
@@ -234,23 +245,16 @@ function delSession() {
     }
 }
 
-function main(relatedRequestObj?: IRequestOption | IUploadFileOption) {
-    return new Promise((resolve, reject) => {
-        let retry = !relatedRequestObj
-            // 如果没有关联的请求，重试即调用自身
-            ? () => main().then(resolve).catch(reject)
-            // 如果有关联的请求，重试即调用所关联的请求
-            : () => request(relatedRequestObj).then(relatedRequestObj._resolve).catch(relatedRequestObj._reject);
+function main() {
+    return new Promise<ILoginResult|void>((resolve, reject) => {
         return checkLogin().then((res) => {
             return config.doNotCheckSession ? Promise.resolve(res) : checkSession()
-        }, ({title, content}) => {
-            errorHandler.doError(title, content, retry);
-            return reject({title, content});
+        }, () => {
+            return reject();
         }).then((res) => {
             return resolve(res);
-        }, ({title, content})=> {
-            errorHandler.doError(title, content, retry);
-            return reject({title, content});
+        }).catch((e: IErrorObject) => {
+            return reject(e);
         })
     })
 }
