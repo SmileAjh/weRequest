@@ -6,6 +6,6 @@ export default () => {
         urlPerfix: config.urlPerfix,
         sessionExpireTime: config.sessionExpireTime,
         sessionExpireKey: config.sessionExpireKey,
-        sessionExpire: status.sessionExpire
+        sessionExpire: status.sessionExpire,
     }
 };

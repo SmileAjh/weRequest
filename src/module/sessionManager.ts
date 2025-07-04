@@ -164,7 +164,7 @@ async function code2Session(code: string) {
     let data: any;
     // codeToSession.data支持函数
     if (typeof config.codeToSession.data === "function") {
-        data = await config.codeToSession.data(code);
+        data = (await config.codeToSession.data(code)) || {};
     } else {
         data = config.codeToSession.data || {};
     }
