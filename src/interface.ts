@@ -144,6 +144,8 @@ export interface IRequestObject extends WechatMiniprogram.RequestOption{
     _resolve?: (value?: any) => void;
     /* 请求失败reject */
     _reject?: (reason?: any) => void;
+    /* 已尝试过的域名列表 */
+    _triedDomains?: Set<string>;
 }
 
 export interface IUploadFileOption extends IUploadFileObject {
@@ -184,6 +186,8 @@ export interface IUploadFileObject extends WechatMiniprogram.UploadFileOption {
     _resolve?: (value?: any) => void;
     /* 请求失败reject */
     _reject?: (reason?: any) => void;
+    /* 已尝试过的域名列表 */
+    _triedDomains?: Set<string>;
 }
 
 export interface IGetConfigResult {

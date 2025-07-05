@@ -59,12 +59,14 @@ function isSessionExpireOrEmpty() {
 
       if (statusEmpty) {
         for (const key in config.sessionName!) {
-          const stgKey = config.sessionName![key];
-          const statusValue = wx.getStorageSync(stgKey);
-          if (!statusValue) {
-            return true;
-          } else {
-            status.session[key] = statusValue;
+          if (config.sessionName!.hasOwnProperty(key)) {
+            const stgKey = config.sessionName![key];
+            const statusValue = wx.getStorageSync(stgKey);
+            if (!statusValue) {
+              return true;
+            } else {
+              status.session[key] = statusValue;
+            }
           }
         }
       }
@@ -118,8 +120,8 @@ function login() {
                 if (res.code) {
                     code2Session(res.code).then(() => {
                         return resolve();
-                    }).catch((res) => {
-                        return reject(res);
+                    }).catch((error) => {
+                        return reject(error);
                     })
                 } else {
                     return reject({type: "system-error", res});
@@ -147,17 +149,19 @@ function setSession(session: Record<string, any>) {
             data: String(status.sessionExpire)
         })
     }
-    let data : any = {};
+    const data : any = {};
     for (const key in session) {
-      if (config.sessionName && config.sessionName[key]) {
-        wx.setStorage({
-          key: config.sessionName[key],
-          data: session[key],
-        });
+      if (session.hasOwnProperty(key)) {
+        if (config.sessionName && config.sessionName[key]) {
+          wx.setStorage({
+            key: config.sessionName[key],
+            data: session[key],
+          });
+        }
+        data[key] = session[key];
       }
-      data[key] = session[key];
     }
-    status.session = Object.assign(status.session || {}, data);
+    status.session = { ...(status.session || {}), ...data };
 }
 
 async function code2Session(code: string) {
@@ -188,14 +192,14 @@ async function code2Session(code: string) {
     obj.url = url.replaceDomain(obj.url);
 
     return new Promise((resolve, reject) => {
-        let start = new Date().getTime();
+        const start = new Date().getTime();
         wx.request({
             ...obj,
             success(res: WechatMiniprogram.RequestSuccessCallbackResult) {
                 if (res.statusCode === 200) {
                     // 耗时上报
                     if (config.codeToSession.report) {
-                        let end = new Date().getTime();
+                        const end = new Date().getTime();
                         durationReporter.report(config.codeToSession.report, start, end)
                     }
 
@@ -221,7 +225,7 @@ async function code2Session(code: string) {
                     // 开启备份域名
                     requestHandler.enableBackupDomain(obj.url);
                     // 重试一次
-                    return code2Session(code).then((res)=> resolve(res));
+                    return code2Session(code).then((result)=> resolve(result));
                 }
                 return reject({type: "system-error", res});
             }
@@ -233,9 +237,11 @@ async function code2Session(code: string) {
 function delSession() {
     status.session = undefined;
     for (const key in config.sessionName!) {
-      wx.removeStorage({
-        key: config.sessionName![key]
-      });
+      if (config.sessionName!.hasOwnProperty(key)) {
+        wx.removeStorage({
+          key: config.sessionName![key]
+        });
+      }
     }
     if (config.sessionExpireTime && config.sessionExpireKey) {
         status.sessionExpire = Infinity;

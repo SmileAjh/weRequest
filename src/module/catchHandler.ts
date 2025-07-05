@@ -4,7 +4,7 @@ import config from '../store/config'
 import taskManager from './taskManager'
 
 class ErrorWithData extends Error {
-    data: any;
+    public data: any;
 
     constructor(msg: string, data: any = {}) {
         super(msg);
@@ -31,7 +31,7 @@ function catchHandler(e: IErrorObject, obj: IRequestOption | IUploadFileOption, 
         if (type === 'http-error') {
             return reject(new Error((res as WechatMiniprogram.RequestSuccessCallbackResult).statusCode.toString()));
         } else if (type === 'logic-error') {
-            let msg = errorHandler.getErrorMsg(res as WechatMiniprogram.RequestSuccessCallbackResult);
+            const msg = errorHandler.getErrorMsg(res as WechatMiniprogram.RequestSuccessCallbackResult);
             return reject(new ErrorWithData(msg.content, (res as WechatMiniprogram.RequestSuccessCallbackResult).data));
         } else if (type === 'system-error') {
             return reject(new Error(res.errMsg));

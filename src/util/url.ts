@@ -53,8 +53,36 @@ function isInBackupDomainList(url: string = "") {
     return res;
 }
 
+function getNextUntriedDomain(url: string = "", triedDomains?: Set<string>): string | null {
+    if (!config.backupDomainList || typeof config.backupDomainList !== 'object') {
+        return null;
+    }
+
+    for (const origin in config.backupDomainList) {
+        if (url.indexOf(origin) >= 0) {
+            const targetDomain = getDomain(config.backupDomainList[origin]);
+            // 如果目标域名还未尝试过，则返回
+            if (!triedDomains?.has(targetDomain)) {
+                return targetDomain;
+            }
+        }
+    }
+    return null;
+}
+
+function getDomain(url: string = ""): string {
+    // 使用单个正则表达式匹配所有情况：
+    // 1. http(s)://domain.com
+    // 2. //domain.com
+    // 3. domain.com
+    const match = url.match(/^(?:https?:)?(?:\/\/)?([^/]+)/);
+    return match ? match[1] : url;
+}
+
 export default {
     setParams,
     replaceDomain,
-    isInBackupDomainList
+    isInBackupDomainList,
+    getNextUntriedDomain,
+    getDomain
 };

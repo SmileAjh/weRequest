@@ -95,7 +95,7 @@ function initializeRequestObj(obj: IRequestOption) {
     
     obj.header = obj.header ? obj.header : {};
     if (typeof config.setHeader === 'function') {
-        let header = config.setHeader();
+        const header = config.setHeader();
         if (typeof header === 'object') {
             obj.header = {...obj.header, ...header};
         }
@@ -171,7 +171,7 @@ function initializeUploadFileObj(obj: IUploadFileOption) {
 
     obj.header = obj.header ? obj.header : {};
     if (typeof config.setHeader === 'function') {
-        let header = config.setHeader();
+        const header = config.setHeader();
         if (typeof header === 'object') {
             obj.header = {...obj.header, ...header};
         }
@@ -230,15 +230,26 @@ function doRequest(obj: IRequestOption) {
                 return resolve(res);
             },
             fail(res) {
-                if (res && res.errMsg == 'request:fail abort') {
-                  return;
+                if (res && res.errMsg === 'request:fail abort') {
+                    return;
                 }
-                // 如果主域名不可用，且配置了备份域名，且本次请求未使用备份域名
+                // 如果主域名不可用，且配置了备份域名，且本次请求未使用过所有备份域名
                 if ((config.domainChangeTrigger && config.domainChangeTrigger(res)) && url.isInBackupDomainList(obj.url)) {
-                    // 开启备份域名
-                    enableBackupDomain(obj.url);
-                    // 重试一次
-                    return doRequest(obj).then((res)=> resolve(res));
+                    // 初始化已尝试的域名列表
+                    if (!obj._triedDomains) {
+                        obj._triedDomains = new Set<string>();
+                    }
+                    // 记录当前域名
+                    const currentDomain = url.getDomain(obj.url);
+                    obj._triedDomains.add(currentDomain);
+                    // 检查是否还有未尝试的备用域名
+                    const nextDomain = url.getNextUntriedDomain(obj.url, obj._triedDomains);
+                    if (nextDomain) {
+                        // 开启备份域名
+                        enableBackupDomain(obj.url);
+                        // 重试一次
+                        return doRequest(obj).then((result) => resolve(result)).catch((error) => reject(error));
+                    }
                 }
                 return reject({ type: 'system-error', res });
             },
@@ -274,12 +285,23 @@ function doUploadFile(obj: IUploadFileOption) {
                 return resolve(res);
             },
             fail(res) {
-                // 如果主域名不可用，且配置了备份域名，且本次请求未使用备份域名
+                // 如果主域名不可用，且配置了备份域名，且本次请求未使用过所有备份域名
                 if ((config.domainChangeTrigger && config.domainChangeTrigger(res)) && url.isInBackupDomainList(obj.url)) {
-                    // 开启备份域名
-                    enableBackupDomain(obj.url);
-                    // 重试一次
-                    return doUploadFile(obj).then((res)=> resolve(res));
+                    // 初始化已尝试的域名列表
+                    if (!obj._triedDomains) {
+                        obj._triedDomains = new Set<string>();
+                    }
+                    // 记录当前域名
+                    const currentDomain = url.getDomain(obj.url);
+                    obj._triedDomains.add(currentDomain);
+                    // 检查是否还有未尝试的备用域名
+                    const nextDomain = url.getNextUntriedDomain(obj.url, obj._triedDomains);
+                    if (nextDomain) {
+                        // 开启备份域名
+                        enableBackupDomain(obj.url);
+                        // 重试一次
+                        return doUploadFile(obj).then((result) => resolve(result)).catch((error) => reject(error));
+                    }
                 }
                 return reject({ type: 'system-error', res });
             },
@@ -302,9 +324,9 @@ function request<TResp>(obj: IRequestOption): Promise<TResp> {
         obj = preDo(obj, resolve, reject);
 
         if (config.mockJson) {
-            let mockResponse = mockManager.get(obj);
+            const mockResponse = mockManager.get(obj);
             if (mockResponse) {
-                let response = responseHandler.responseForRequest(mockResponse, obj);
+                const response = responseHandler.responseForRequest(mockResponse, obj);
                 return resolve(response);
             }
         }
@@ -321,7 +343,7 @@ function request<TResp>(obj: IRequestOption): Promise<TResp> {
           }
           return promise;
         }).then((res: WechatMiniprogram.RequestSuccessCallbackResult) => {
-            let response = responseHandler.responseForRequest(res, obj);
+            const response = responseHandler.responseForRequest(res, obj);
             if (response != null) {
                 return resolve(response);
             }
@@ -336,9 +358,9 @@ function uploadFile(obj: IUploadFileOption): any {
         obj = preDo(obj, resolve, reject);
 
         if (config.mockJson) {
-            let mockResponse = mockManager.get(obj);
+            const mockResponse = mockManager.get(obj);
             if (mockResponse) {
-                let response = responseHandler.responseForUploadFile(mockResponse, obj);
+                const response = responseHandler.responseForUploadFile(mockResponse, obj);
                 return resolve(response);
             }
         }
@@ -346,7 +368,7 @@ function uploadFile(obj: IUploadFileOption): any {
         sessionManager.main().then(() => {
             return doUploadFile(obj)
         }).then((res: WechatMiniprogram.UploadFileSuccessCallbackResult) => {
-            let response = responseHandler.responseForUploadFile(res, obj);
+            const response = responseHandler.responseForUploadFile(res, obj);
             if (response != null) {
                 return resolve(response);
             }
@@ -356,11 +378,11 @@ function uploadFile(obj: IUploadFileOption): any {
     })
 }
 
-function enableBackupDomain(url: string = "") {
+function enableBackupDomain(targetUrl: string = "") {
     if (!status.isEnableBackupDomain) {
         status.isEnableBackupDomain = true;
         if (typeof config.backupDomainEnableCallback === 'function') {
-            config.backupDomainEnableCallback(url);
+            config.backupDomainEnableCallback(targetUrl);
         }
     }
 }
