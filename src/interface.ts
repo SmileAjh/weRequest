@@ -66,11 +66,6 @@ export interface IInitOption {
      maxQueueSize?: number;
      /* 登录态的默认位置，可选值：'data'|'header'|'both'，默认为 'data' */
      sessionDefaultPosition?: 'data' | 'header' | 'both';
-     /* header中字段的前缀配置 */
-     headerPrefix?: {
-         /* 字段的前缀配置 */
-         [key: string]: string;
-     };
      /* session key 的位置配置 */
      sessionKeyPosition?: {
          [key: string]: 'data' | 'header' | 'both';

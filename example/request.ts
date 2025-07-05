@@ -102,12 +102,6 @@ weRequest.init({
     sessionKeyPosition: {
         // 'token': 'header',    // token放在header中
         // 'userId': 'both'      // userId同时放在data和header中
-    },
-    
-    // [可选] header中字段的前缀配置
-    headerPrefix: {
-        // 'token': 'Bearer ',   // token字段会添加 'Bearer ' 前缀
-        // 'userId': 'X-User-'   // userId字段会添加 'X-User-' 前缀
     }
 })
 
@@ -143,9 +137,6 @@ weRequest.init({
 // 3. 全部放在header中
 weRequest.init({
     sessionDefaultPosition: 'header',
-    headerPrefix: {
-        'session': 'Bearer '
-    },
     // ... 其他配置
 });
 
@@ -160,10 +151,42 @@ weRequest.init({
         'token': 'header',               // token单独放header
         'userId': 'both'                 // userId同时放data和header
     },
-    headerPrefix: {
-        'token': 'Bearer '
-    },
     // ... 其他配置
+});
+
+// 5. Authorization Token示例 - Bearer Token认证
+weRequest.init({
+    codeToSession: {
+        url: 'api/auth/login',
+        method: 'POST',
+        success: function(res) {
+            // 直接在返回值中添加 Bearer 前缀
+            return {
+                Authorization: `Bearer ${res.data.token}`
+            };
+        }
+    },
+    sessionName: {
+        Authorization: 'auth_token'  // localStorage 中的 key
+    },
+    sessionDefaultPosition: 'header',    // Authorization 放在 header 中
+    urlPerfix: 'https://api.example.com/',
+    successTrigger: function(res) {
+        return res.code === 0;
+    },
+    // 登录失效的判断条件
+    loginTrigger: function(res) {
+        return res.code === 401;  // token 过期或无效
+    }
+});
+
+// 使用示例：
+// 登录后的请求会自动带上 Authorization: Bearer xxx 在 header 中
+weRequest.request({
+    url: 'api/user/profile',
+    method: 'GET'
+}).then(res => {
+    console.log('用户信息：', res.data);
 });
 */
 

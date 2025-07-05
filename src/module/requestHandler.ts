@@ -135,14 +135,6 @@ function initializeRequestObj(obj: IRequestOption) {
 
         // 处理 header 中的 session
         if (Object.keys(headerSession).length > 0) {
-            // 添加配置的前缀
-            if (config.headerPrefix) {
-                Object.keys(headerSession).forEach(key => {
-                    if (config.headerPrefix![key]) {
-                        headerSession[key] = `${config.headerPrefix![key]}${headerSession[key]}`;
-                    }
-                });
-            }
             obj.header = { ...obj.header, ...headerSession };
         }
     }

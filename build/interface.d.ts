@@ -30,9 +30,6 @@ export interface IInitOption {
     domainChangeTrigger?: Function;
     maxQueueSize?: number;
     sessionDefaultPosition?: 'data' | 'header' | 'both';
-    headerPrefix?: {
-        [key: string]: string;
-    };
     sessionKeyPosition?: {
         [key: string]: 'data' | 'header' | 'both';
     };
