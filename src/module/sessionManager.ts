@@ -164,7 +164,25 @@ function setSession(session: Record<string, any>) {
     status.session = { ...(status.session || {}), ...data };
 }
 
-async function code2Session(code: string) {
+/* 清空session */
+function delSession() {
+    status.session = undefined;
+    for (const key in config.sessionName!) {
+      if (config.sessionName!.hasOwnProperty(key)) {
+        wx.removeStorage({
+          key: config.sessionName![key]
+        });
+      }
+    }
+    if (config.sessionExpireTime && config.sessionExpireKey) {
+        status.sessionExpire = Infinity;
+        wx.removeStorage({
+            key: config.sessionExpireKey
+        })
+    }
+}
+
+async function code2Session(code: string, originUrl: string = '', triedDomains: Set<string> = new Set()) {
     let data: any;
     // codeToSession.data支持函数
     if (typeof config.codeToSession.data === "function") {
@@ -178,8 +196,9 @@ async function code2Session(code: string) {
         data.code = code;
     }
 
+  
     let obj = {
-        url: requestHandler.format(config.codeToSession.url),
+        url: requestHandler.format(originUrl || config.codeToSession.url),
         data,
         method: config.codeToSession.method || 'GET',
         header: typeof config.setHeader === 'function' ? config.setHeader(): config.setHeader,
@@ -220,12 +239,19 @@ async function code2Session(code: string) {
                 }
             },
             fail: (res) => {
-                // 如果主域名不可用，且配置了备份域名，且本次请求未使用备份域名
+                // 如果主域名不可用，且配置了备份域名，且本次请求未使用过所有备份域名
                 if ((config.domainChangeTrigger && config.domainChangeTrigger(res)) && url.isInBackupDomainList(obj.url)) {
-                    // 开启备份域名
-                    requestHandler.enableBackupDomain(obj.url);
-                    // 重试一次
-                    return code2Session(code).then((result)=> resolve(result));
+                    // 记录当前域名
+                    const currentDomain = url.getDomain(obj.url);
+                    triedDomains.add(currentDomain);
+                    // 检查是否还有未尝试的备用域名
+                    const nextDomain = url.getNextUntriedDomain(obj.url, triedDomains);
+                    if (nextDomain) {
+                        // 开启备份域名
+                        requestHandler.enableBackupDomain(obj.url);
+                        // 重试一次
+                        return code2Session(code, obj.url,triedDomains).then((result) => resolve(result)).catch((error) => reject(error));
+                    }
                 }
                 return reject({type: "system-error", res});
             }
@@ -233,30 +259,12 @@ async function code2Session(code: string) {
     })
 }
 
-/* 清空session */
-function delSession() {
-    status.session = undefined;
-    for (const key in config.sessionName!) {
-      if (config.sessionName!.hasOwnProperty(key)) {
-        wx.removeStorage({
-          key: config.sessionName![key]
-        });
-      }
-    }
-    if (config.sessionExpireTime && config.sessionExpireKey) {
-        status.sessionExpire = Infinity;
-        wx.removeStorage({
-            key: config.sessionExpireKey
-        })
-    }
-}
-
 function main() {
     return new Promise<ILoginResult|void>((resolve, reject) => {
         return checkLogin().then((res) => {
             return config.doNotCheckSession ? Promise.resolve(res) : checkSession()
-        }, () => {
-            return reject();
+        }, (error) => {
+            return reject(error);
         }).then((res) => {
             return resolve(res);
         }).catch((e: IErrorObject) => {

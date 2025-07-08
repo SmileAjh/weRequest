@@ -384,6 +384,11 @@ function enableBackupDomain(targetUrl: string = "") {
         if (typeof config.backupDomainEnableCallback === 'function') {
             config.backupDomainEnableCallback(targetUrl);
         }
+    } else {
+        // 域名备份关系：a:b b:c 如已更换一次域名b，b域名也不可用，去尝试c，则urlPerfix更新为b，保证后续不请求a域名
+        if (typeof config.urlPerfix === 'string' && targetUrl.indexOf(config.urlPerfix) === -1) {
+            config.urlPerfix = url.replaceDomain(config.urlPerfix);
+        }
     }
 }
 
