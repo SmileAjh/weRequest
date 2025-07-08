@@ -68,6 +68,7 @@ export interface IRequestObject extends WechatMiniprogram.RequestOption {
     _reportEndTime?: number;
     _resolve?: (value?: any) => void;
     _reject?: (reason?: any) => void;
+    _triedDomains?: Set<string>;
 }
 export interface IUploadFileOption extends IUploadFileObject {
     dataLoad?: Function;
@@ -89,6 +90,7 @@ export interface IUploadFileObject extends WechatMiniprogram.UploadFileOption {
     _reportEndTime?: number;
     _resolve?: (value?: any) => void;
     _reject?: (reason?: any) => void;
+    _triedDomains?: Set<string>;
 }
 export interface IGetConfigResult {
     urlPerfix?: string | (() => string);
